@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hitung Nafas Per Menit</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #21262d;
+    --accent: #39d353;
+    --accent-dim: #1a6625;
+    --warn: #f0883e;
+    --danger: #f85149;
+    --text: #e6edf3;
+    --muted: #7d8590;
+    --card: #13181f;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .header h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .header p {
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px;
+    width: 100%;
+    max-width: 420px;
+    position: relative;
+  }
+
+  /* Timer Ring */
+  .timer-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 32px;
+  }
+
+  .ring-container {
+    position: relative;
+    width: 180px;
+    height: 180px;
+    margin-bottom: 20px;
+  }
+
+  .ring-svg {
+    transform: rotate(-90deg);
+    width: 180px;
+    height: 180px;
+  }
+
+  .ring-bg {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 6;
+  }
+
+  .ring-progress {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 502;
+    stroke-dashoffset: 502;
+    transition: stroke-dashoffset 0.1s linear, stroke 0.3s;
+  }
+
+  .ring-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+
+  .timer-display {
+    font-size: 3rem;
+    font-weight: 300;
+    line-height: 1;
+    color: var(--text);
+    letter-spacing: -0.04em;
+  }
+
+  .timer-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  /* Counter */
+  .count-section {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  .breath-count {
+    font-size: 4.5rem;
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -0.05em;
+    transition: color 0.2s, transform 0.15s;
+  }
+
+  .breath-count.pulse {
+    color: var(--accent);
+    transform: scale(1.08);
+  }
+
+  .count-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  /* Tap Button */
+  .tap-btn {
+    width: 100%;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .tap-btn:active, .tap-btn.pressed {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: scale(0.985);
+  }
+
+  .tap-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .tap-btn.pressed::after {
+    opacity: 0.06;
+  }
+
+  /* Controls */
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  .btn {
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn:hover { border-color: var(--text); color: var(--text); }
+  .btn.start { border-color: var(--accent); color: var(--accent); }
+  .btn.start:hover { background: var(--accent-dim); }
+  .btn.stop { border-color: var(--danger); color: var(--danger); }
+  .btn.stop:hover { background: rgba(248,81,73,0.1); }
+  .btn.reset:hover { background: rgba(125,133,144,0.1); }
+
+  /* Result */
+  .result-section {
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+  }
+
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+
+  .result-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .result-value {
+    font-size: 1.6rem;
+    font-weight: 300;
+    letter-spacing: -0.04em;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .status-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .status-normal { background: rgba(57,211,83,0.12); color: var(--accent); border: 1px solid rgba(57,211,83,0.2); }
+  .status-slow { background: rgba(240,136,62,0.12); color: var(--warn); border: 1px solid rgba(240,136,62,0.2); }
+  .status-fast { background: rgba(248,81,73,0.12); color: var(--danger); border: 1px solid rgba(248,81,73,0.2); }
+  .status-idle { background: rgba(125,133,144,0.1); color: var(--muted); border: 1px solid var(--border); }
+
+  .ref-table {
+    margin-top: 20px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .ref-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 9px 14px;
+    font-size: 0.68rem;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .ref-row:last-child { border-bottom: none; }
+  .ref-row.header { color: var(--text); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase; background: var(--surface); }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-green { background: var(--accent); }
+  .dot-warn { background: var(--warn); }
+  .dot-danger { background: var(--danger); }
+  .ref-indicator { display: flex; align-items: center; gap: 6px; }
+
+  /* State classes */
+  .hidden { display: none !important; }
+
+  /* Instruction hint */
+  .hint {
+    text-align: center;
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin-bottom: 20px;
+    line-height: 1.6;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .card { animation: fadeIn 0.4s ease; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Hitung Nafas</h1>
+  <p>Respiratory Rate Monitor</p>
+</div>
+
+<div class="card">
+
+  <!-- Timer Ring -->
+  <div class="timer-section">
+    <div class="ring-container">
+      <svg class="ring-svg" viewBox="0 0 180 180">
+        <circle class="ring-bg" cx="90" cy="90" r="80"/>
+        <circle class="ring-progress" id="ringProgress" cx="90" cy="90" r="80"/>
+      </svg>
+      <div class="ring-center">
+        <div class="timer-display" id="timerDisplay">60</div>
+        <div class="timer-label">detik</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Breath Count -->
+  <div class="count-section">
+    <div class="breath-count" id="breathCount">0</div>
+    <div class="count-label">ketukan nafas</div>
+  </div>
+
+  <!-- Hint -->
+  <div class="hint" id="hint">
+    Tekan <strong style="color:var(--text)">Mulai</strong>, lalu ketuk tombol setiap kali pasien menghirup nafas.<br>Hitung selama 60 detik.
+  </div>
+
+  <!-- Tap Button -->
+  <button class="tap-btn hidden" id="tapBtn" onclick="recordBreath()">
+    ▼ &nbsp; Ketuk Setiap Nafas &nbsp; ▼
+  </button>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn start" id="startBtn" onclick="startCount()">▶ Mulai</button>
+    <button class="btn stop hidden" id="stopBtn" onclick="stopCount()">■ Hentikan</button>
+    <button class="btn reset" id="resetBtn" onclick="resetCount()">↺ Ulang</button>
+    <button class="btn" id="manualBtn" onclick="toggleManual()">⌨ Manual</button>
+  </div>
+
+  <!-- Manual input (hidden by default) -->
+  <div id="manualSection" class="hidden" style="margin-bottom:20px;">
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input id="manualInput" type="number" min="0" max="99" placeholder="Jumlah nafas" style="
+        flex:1; padding:11px 14px; background:var(--surface); border:1px solid var(--border);
+        border-radius:10px; color:var(--text); font-family:'DM Mono',monospace; font-size:0.8rem;
+        outline:none; width:100%;
+      ">
+      <button onclick="applyManual()" style="
+        padding:11px 18px; background:var(--surface); border:1px solid var(--accent);
+        border-radius:10px; color:var(--accent); font-family:'DM Mono',monospace;
+        font-size:0.75rem; cursor:pointer; white-space:nowrap; letter-spacing:0.05em;
+      ">Hitung</button>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div class="result-section">
+    <div class="result-row">
+      <span class="result-label">Hasil (nafas/menit)</span>
+      <span class="result-value" id="resultValue">—</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">Status</span>
+      <span class="status-badge status-idle" id="statusBadge">Menunggu</span>
+    </div>
+
+    <!-- Reference table -->
+    <div class="ref-table">
+      <div class="ref-row header">
+        <span>Kategori</span>
+        <span>Rentang Normal</span>
+        <span>Status</span>
+      </div>
+      <div class="ref-row">
+        <span>Dewasa</span>
+        <span>12 – 20 / menit</span>
+        <div class="ref-indicator"><div class="dot dot-green"></div></div>
+      </div>
+      <div class="ref-row">
+        <span>Bradipnea</span>
+        <span>&lt; 12 / menit</span>
+        <div class="ref-indicator"><div class="dot dot-warn"></div></div>
+      </div>
+      <div class="ref-row">
+        <span>Takipnea</span>
+        <span>&gt; 20 / menit</span>
+        <div class="ref-indicator"><div class="dot dot-danger"></div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let timer = null;
+  let timeLeft = 60;
+  let breathCount = 0;
+  let isRunning = false;
+  let duration = 60;
+
+  const ringProgress = document.getElementById('ringProgress');
+  const circumference = 2 * Math.PI * 80; // ≈ 502.65
+
+  function updateRing(secondsLeft) {
+    const fraction = secondsLeft / duration;
+    const offset = circumference * (1 - fraction);
+    ringProgress.style.strokeDashoffset = offset;
+    // Color transition
+    if (secondsLeft > 20) ringProgress.style.stroke = 'var(--accent)';
+    else if (secondsLeft > 10) ringProgress.style.stroke = 'var(--warn)';
+    else ringProgress.style.stroke = 'var(--danger)';
+  }
+
+  function startCount() {
+    if (isRunning) return;
+    isRunning = true;
+    timeLeft = 60;
+    breathCount = 0;
+    updateDisplay();
+
+    document.getElementById('startBtn').classList.add('hidden');
+    document.getElementById('stopBtn').classList.remove('hidden');
+    document.getElementById('tapBtn').classList.remove('hidden');
+    document.getElementById('hint').classList.add('hidden');
+    document.getElementById('resultValue').textContent = '—';
+    document.getElementById('statusBadge').className = 'status-badge status-idle';
+    document.getElementById('statusBadge').textContent = 'Berjalan…';
+
+    ringProgress.style.strokeDashoffset = 0;
+
+    timer = setInterval(() => {
+      timeLeft--;
+      updateDisplay();
+      updateRing(timeLeft);
+      if (timeLeft <= 0) finishCount();
+    }, 1000);
+  }
+
+  function stopCount() {
+    if (!isRunning) return;
+    clearInterval(timer);
+    isRunning = false;
+    finishCount(true);
+  }
+
+  function finishCount(manual = false) {
+    clearInterval(timer);
+    isRunning = false;
+
+    document.getElementById('stopBtn').classList.add('hidden');
+    document.getElementById('startBtn').classList.remove('hidden');
+    document.getElementById('tapBtn').classList.add('hidden');
+    document.getElementById('hint').classList.remove('hidden');
+
+    let rpm;
+    if (manual && timeLeft > 0) {
+      // Extrapolate to 60s
+      const elapsed = duration - timeLeft;
+      rpm = elapsed > 0 ? Math.round((breathCount / elapsed) * 60) : breathCount;
+    } else {
+      rpm = breathCount;
+    }
+
+    showResult(rpm);
+    updateRing(0);
+  }
+
+  function showResult(rpm) {
+    document.getElementById('resultValue').textContent = rpm;
+    const badge = document.getElementById('statusBadge');
+    if (rpm < 12) {
+      badge.className = 'status-badge status-slow';
+      badge.textContent = 'Bradipnea';
+    } else if (rpm > 20) {
+      badge.className = 'status-badge status-fast';
+      badge.textContent = 'Takipnea';
+    } else {
+      badge.className = 'status-badge status-normal';
+      badge.textContent = 'Normal';
+    }
+  }
+
+  function recordBreath() {
+    if (!isRunning) return;
+    breathCount++;
+    updateDisplay();
+    // Visual pulse
+    const el = document.getElementById('breathCount');
+    const btn = document.getElementById('tapBtn');
+    el.classList.add('pulse');
+    btn.classList.add('pressed');
+    setTimeout(() => { el.classList.remove('pulse'); btn.classList.remove('pressed'); }, 200);
+  }
+
+  function resetCount() {
+    clearInterval(timer);
+    isRunning = false;
+    timeLeft = 60;
+    breathCount = 0;
+    updateDisplay();
+    updateRing(60);
+    ringProgress.style.stroke = 'var(--accent)';
+    document.getElementById('stopBtn').classList.add('hidden');
+    document.getElementById('startBtn').classList.remove('hidden');
+    document.getElementById('tapBtn').classList.add('hidden');
+    document.getElementById('hint').classList.remove('hidden');
+    document.getElementById('resultValue').textContent = '—';
+    document.getElementById('statusBadge').className = 'status-badge status-idle';
+    document.getElementById('statusBadge').textContent = 'Menunggu';
+    ringProgress.style.strokeDashoffset = circumference;
+  }
+
+  function toggleManual() {
+    const sec = document.getElementById('manualSection');
+    sec.classList.toggle('hidden');
+  }
+
+  function applyManual() {
+    const val = parseInt(document.getElementById('manualInput').value);
+    if (isNaN(val) || val < 0) return;
+    showResult(val);
+    document.getElementById('resultValue').textContent = val;
+    document.getElementById('manualSection').classList.add('hidden');
+    document.getElementById('manualInput').value = '';
+  }
+
+  function updateDisplay() {
+    document.getElementById('timerDisplay').textContent = timeLeft;
+    document.getElementById('breathCount').textContent = breathCount;
+  }
+
+  // Keyboard shortcut: Spacebar = tap
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && isRunning) {
+      e.preventDefault();
+      recordBreath();
+    }
+  });
+
+  // Init ring
+  ringProgress.style.strokeDasharray = circumference;
+  ringProgress.style.strokeDashoffset = circumference;
+</script>
+</body>
+</html>
